@@ -8,10 +8,6 @@ const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 
-// const bcrypt = require("bcrypt");
-// const saltRounds = 10;
-// const md5 = require("md5");  -- used to hash passwords
-// const encrypt = require("mongoose-encryption");  -- used to encrypt passwords
 
 const app = express();
 app.use(express.static("public"));
@@ -31,15 +27,12 @@ app.use(passport.session());
 
 
 mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true});
-// mongoose.set("useCreateIndex", true);
-
 
 const userSchema =  new mongoose.Schema({
     email: String,
     password: String
 });
 
-// userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ["password"]}); -- encryption of password
 userSchema.plugin(passportLocalMongoose);
 
 
@@ -64,9 +57,20 @@ app.get("/register", function(req, res){
 
 
 app.get("/secrets", function(req, res){
-    console.log("Secrets route");
-    res.render("secrets");
+    if (req.isAuthenticated()){
+        console.log("Secrets route");
+        res.render("secrets");
+    } else {
+        res.redirect("/login");
+    }
+    
 });
+
+
+app.get('/logout', function(req, res, next){
+    req.session.destroy();
+    res.redirect("/");
+  });
 
 app.post("/register", function(req, res){
     User.register({username: req.body.username}, req.body.password, function(err, user) {
@@ -82,23 +86,6 @@ app.post("/register", function(req, res){
     });
 });
 
-    // bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
-    //     const newUser = new User({
-    //         email: req.body.username,
-    //         password: hash
-    //         // password: md5(req.body.password)  //md5 will hash the password and save it to our database
-    //     });
-    
-    //     try {
-    //         newUser.save();
-    //         res.render("secrets");
-    //     } catch (err) {
-    //         console.log(err);
-    //     }
-    // });
-    
-// });
-
 app.post("/login", async (req, res) => {
     const user = new User({
         username: req.body.username,
@@ -112,23 +99,6 @@ app.post("/login", async (req, res) => {
             res.redirect('/secrets');
         }
       });
-
-
-    // const password = md5(req.body.password);  //we are hashing the password entered by the user and checking it with the hashed password that is saved in our database
-    // try {
-    //     const resp = await User.findOne({email: username});
-    //     bcrypt.compare(password, resp.password, function(err, result) {
-    //         if (result === true){
-    //             res.render("secrets");
-    //         }
-    //     });
-        
-    //     // if (resp.password === password){
-    //     //     res.render("secrets");
-    //     // }   --- code used when using md5
-    // } catch (err) {
-    //     console.log(err)
-    // }
 });
 
 app.listen("3000", function(){
