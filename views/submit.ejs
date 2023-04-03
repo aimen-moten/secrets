@@ -14,6 +14,22 @@
       <button type="submit" class="btn btn-dark">Submit</button>
     </form>
 
+    <% if(secret.length != 0){ %>
+      <hr>
+        <h1 class="display-3">Your Secrets</h1>
+        <form  action="/submit/delete" method="post">
+          <div class="form-group">
+            <select class="form-control text-center" name="secret">
+              <% secret.forEach(function(secrets){ %>
+                <option value="<%= secrets %>"><%= secrets %></option>
+              <% }); %>
+            </select>
+          </div>
+          <!-- <input type="hidden" name="secretId" value="<%=secret._id%>"> -->
+          <button type="submit" class="btn btn-dark" value="<%= secret%>" name="secretText">Delete Secret</button>
+        </form>
+  <%  } %>
+
 
   </div>
 </div>

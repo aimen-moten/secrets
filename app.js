@@ -35,7 +35,8 @@ const userSchema =  new mongoose.Schema({
     email: String,
     password: String,
     googleId: String,
-    facebookId: String
+    facebookId: String,
+    secret: Array
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -125,15 +126,15 @@ app.get("/register", function(req, res){
 });
 
 
-app.get("/secrets", function(req, res){
-    if (req.isAuthenticated()){
-        console.log("Secrets route");
-        res.render("secrets");
-    } else {
-        console.log("Im here");
-        res.redirect("/login");
+app.get("/secrets", async (req, res) => {
+    try {
+        const resp = await User.find({"secret": {$ne: null}});
+        console.log(resp);
+        res.render("secrets", {usersWithSecrets: resp});
+    } catch (err) {
+        console.log(err);
     }
-    
+
 });
 
 
@@ -156,21 +157,103 @@ app.post("/register", function(req, res){
     });
 });
 
-app.post("/login", async (req, res) => {
-    const user = new User({
-        username: req.body.username,
-        password: req.body.password
-    });
 
-    req.login(user, function(err) {
-        if (err) { 
-            console.log(err);
-        } else {
-            res.redirect('/secrets');
-        }
-      });
+// app.post("/login", async (req, res) => {
+//     const user = new User({
+//         username: req.body.username,
+//         password: req.body.password
+//     });
+
+//     req.login(user, function(err) {
+//         if (err) { 
+//             console.log(err);
+//         } else {
+//             res.redirect('/secrets');
+//         }
+//       });
+// });
+
+app.post("/login", passport.authenticate("local", {
+  successRedirect: "/secrets",
+  failureRedirect: "/login"
+}));
+
+app.get('/submit', async (req, res) => {
+  console.log(req.isAuthenticated())
+  if (req.isAuthenticated()) {
+    // Find the current user by their ID
+    try {
+      const resp = await User.findById(req.user._id);
+      res.render("submit", { secret: resp.secret });
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  else {
+    res.redirect("/login");
+  }
 });
 
+
+app.post("/submit/delete", async(req, res)=>{
+  if (req.isAuthenticated()){
+    try {
+      const foundUser = await User.findById(req.user.id);
+      const secretIndex = foundUser.secret.findIndex(findSecret);
+      console.log(req.body.secret);
+      function findSecret(everySecret) {
+        // console.log(everySecret);
+        return everySecret === req.body.secret;
+      }
+      foundUser.secret.splice(secretIndex, 1);
+      console.log(foundUser.secret);
+      foundUser.save();
+      res.redirect("/submit");
+      // console.log(secretIndex)
+    } catch (err) {
+      console.log(err);
+    }
+  } else {
+    res.redirect("/login");
+  }
+});
+
+// app.post("/submit/delete", async (req, res) => {
+//   if (req.isAuthenticated()) {
+//     try {
+//       const foundUser = await User.findById(req.user.id);
+//       console.log(foundUser);
+//       // console.log(req.foundUser.secrets);
+//       const secretIndex = foundUser.secrets.findIndex((secret) => secret._id === req.foundUser.secret);
+//       // console.log(secret);
+//       console.log(secretIndex);
+//       if (secretIndex !== -1) {
+//         foundUser.secret.splice(secretIndex, 1);
+//         console.log(foundUser.secret);
+//         foundUser.save();
+//       }
+//       res.redirect("/submit");
+//     } catch (err) {
+//       console.log(err);
+//     }
+//   } else {
+//     res.redirect("/login");
+//   }
+// });
+
+
+  
+app.post("/submit", async (req, res) => {
+    const submittedSecret = req.body.secret;
+    try {
+        const foundUser = await User.findById(req.user.id);
+        foundUser.secret.push(submittedSecret);
+        foundUser.save();
+        res.redirect("/secrets");
+    } catch (err) {
+        console.log(err);
+    }
+});
 app.listen("3000", function(){
     console.log("Server started on port 3000");
 })
